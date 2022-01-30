@@ -64,7 +64,7 @@ impl From<quick_xml::Error> for FeedError {
             //quick_xml::Error::UnquotedValue(_) => todo!(),
             //quick_xml::Error::DuplicatedAttribute(_, _) => todo!(),
             //quick_xml::Error::EscapeError(_) => todo!(),
-            e @ _ => Self::new(e),
+            e => Self::new(e),
         }
     }
 }
@@ -85,7 +85,7 @@ impl From<quick_xml::DeError> for FeedError {
             //quick_xml::DeError::Start => todo!(),
             //quick_xml::DeError::End => todo!(),
             //quick_xml::DeError::Unsupported(_) => todo!(),
-            e @ _ => Self::De(e.to_string()),
+            e => Self::De(e.to_string()),
         }
     }
 }

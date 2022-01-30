@@ -36,7 +36,14 @@ impl CanvasRss for CanvasRssService {
             },
             None => (false, SystemTime::UNIX_EPOCH),
         };
-        let feeds = Feed::get_all(&self.pool).await.unwrap();
+        let feeds = if let Ok(feeds) = Feed::get_all(&self.pool).await {
+            feeds
+        } else {
+            return Err(tonic::Status::new(
+                tonic::Code::Internal,
+                "Failed to retreive feeds",
+            ))
+        };
 
         let (tx, rx) = mpsc::channel(4);
 
@@ -82,7 +89,14 @@ impl CanvasRss for CanvasRssService {
         &self,
         _request: tonic::Request<NewAnnouncementsRequest>,
     ) -> Result<tonic::Response<Self::NewAnnouncementsStream>, tonic::Status> {
-        let feeds = Feed::get_new(&self.pool).await.unwrap();
+        let feeds = if let Ok(feeds) = Feed::get_new(&self.pool).await {
+            feeds
+        } else {
+            return Err(tonic::Status::new(
+                tonic::Code::Internal,
+                "Failed to retreive feeds",
+            ))
+        };
 
         let (tx, rx) = mpsc::channel(4);
 

@@ -58,7 +58,7 @@ impl From<diesel::result::Error> for DbError {
             //diesel::result::Error::SerializationError(_) => todo!(),
             //diesel::result::Error::RollbackTransaction => todo!(),
             //diesel::result::Error::AlreadyInTransaction => todo!(),
-            e @ _ => Self::new(e),
+            e => Self::new(e),
         }
     }
 }

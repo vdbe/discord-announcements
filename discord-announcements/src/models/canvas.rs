@@ -1,4 +1,4 @@
-use diesel::{result::Error as DieselError, QueryDsl, RunQueryDsl};
+use diesel::{QueryDsl, RunQueryDsl};
 use reqwest::IntoUrl;
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -187,9 +187,10 @@ impl Feed {
     /// Retrieve all feeds
     pub async fn get_all(pool: &Pool) -> Result<Option<Vec<Self>>, MyError> {
         let vec_db_feeds = match DbFeed::get_all(pool) {
-            Ok(vec) => vec,
+            Ok(Some(vec)) => vec,
+            Ok(None) => return Ok(None),
             //Err(DieselError::NotFound) => return Ok(None), // TODO: Return Ok(None) when we have a proper error type
-            Err(err) => Err(err)?,
+            Err(err) => return Err(err.into()),
         };
 
         // spawn tasks to retrieve the xml feeds
@@ -210,9 +211,10 @@ impl Feed {
     /// Retrieve feeds containing only announcements placed after the last time this function was called
     pub async fn get_new(pool: &Pool) -> Result<Option<Vec<Self>>, MyError> {
         let vec_db_feeds = match DbFeed::get_all(pool) {
-            Ok(vec) => vec,
+            Ok(Some(vec)) => vec,
+            Ok(None) => return Ok(None),
             //Err(DieselError::NotFound) => return Ok(None), // TODO: Return Ok(None) when we have a proper error type
-            Err(err) => Err(err)?,
+            Err(err) => return Err(err.into()),
         };
 
         // spawn tasks to retrieve the xml feeds

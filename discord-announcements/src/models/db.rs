@@ -2,7 +2,7 @@ use diesel::{Insertable, QueryDsl, RunQueryDsl};
 use std::time::SystemTime;
 
 use crate::diesel::ExpressionMethods;
-use crate::error::MyError;
+use crate::error::{DbError, MyError};
 use crate::schema::feeds::dsl::feeds as db_feeds;
 use crate::schema::{backup_feeds, feeds, subscriptions};
 use crate::Pool;
@@ -56,21 +56,27 @@ pub struct Subscription {
 }
 
 impl DbFeed {
-    pub fn get_by_canvas_id(
-        search_canvas_id: &str,
-        pool: &Pool,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
+    pub fn get_by_canvas_id(search_canvas_id: &str, pool: &Pool) -> Result<Option<Self>, DbError> {
         let conn = pool.get()?;
 
-        Ok(db_feeds
+        match db_feeds
             .filter(feeds::canvas_id.eq(search_canvas_id))
-            .get_result(&conn)?)
+            .get_result(&conn)
+        {
+            Ok(f) => Ok(Some(f)),
+            Err(diesel::result::Error::NotFound) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 
-    pub fn get_all(pool: &Pool) -> Result<Vec<DbFeed>, MyError> {
+    pub fn get_all(pool: &Pool) -> Result<Option<Vec<DbFeed>>, DbError> {
         let conn = pool.get()?;
 
-        Ok(db_feeds.load::<DbFeed>(&conn)?)
+        match db_feeds.load::<DbFeed>(&conn) {
+            Ok(v) => Ok(Some(v)),
+            Err(diesel::result::Error::NotFound) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 }
 
@@ -81,8 +87,9 @@ impl Subscription {
         url: &str,
         pool: &Pool,
     ) -> Result<(), MyError> {
+        // TODO: Ged rid of this FeedError
         // Get feed canvas_id
-        let feed = dbg!(Feed::from_url(url).await?);
+        let feed = Feed::from_url(url).await?;
 
         let conn = pool.get()?;
 
