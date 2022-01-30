@@ -8,13 +8,14 @@ const PROTO_PATH = __dirname + '/../../proto/canvasrss.proto';
 var grpc = require('@grpc/grpc-js');
 var protoLoader = require('@grpc/proto-loader');
 var packageDefinition = protoLoader.loadSync(
-    PROTO_PATH,
-    {keepCase: true,
-     longs: String,
-     enums: String,
-     defaults: true,
-     oneofs: true
-    });
+  PROTO_PATH,
+  {
+    keepCase: true,
+    longs: String,
+    enums: String,
+    defaults: true,
+    oneofs: true
+  });
 var canvasrss_proto = grpc.loadPackageDefinition(packageDefinition).canvasrss;
 const TARGET = 'localhost:50051';
 
@@ -22,55 +23,55 @@ const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 
 const commands = [
-	{
-		name: 'ping',
-		description: 'Replies with Pong!',
-	},
-	{
-		name: 'update',
-		description: 'update',
-	},
-	{
-		name: 'subscribe',
-		description: 'subscribe to a feed',
+  {
+    name: 'ping',
+    description: 'Replies with Pong!',
+  },
+  {
+    name: 'update',
+    description: 'update',
+  },
+  {
+    name: 'subscribe',
+    description: 'subscribe to a feed',
     options: [{
       name: 'feed',
       description: 'url of the feed',
       required: true,
       type: 3,
     }]
-	}
+  }
 ];
 
 const rest = new REST({ version: '9' }).setToken(TOKEN);
 
 (async () => {
-	try {
-		console.log('Started refreshing application (/) commands.');
+  try {
+    console.log('Started refreshing application (/) commands.');
 
-		await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
+    await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
 
-		console.log('Successfully reloaded application (/) commands.');
-	} catch (error) {
-		console.error(error);
-	}
+    console.log('Successfully reloaded application (/) commands.');
+  } catch (error) {
+    console.error(error);
+  }
 })();
 
 const { Client, Intents, Interaction, MessageEmbed } = require('discord.js');
 var client = new Client({ intents: [Intents.FLAGS.GUILDS] });
 
 client.on('ready', () => {
-	console.log(`Logged in as ${client.user.tag}!`);
+  console.log(`Logged in as ${client.user.tag}!`);
 });
 
 client.on('interactionCreate', async (interaction) => {
-	if (!interaction.isCommand()) return;
+  if (!interaction.isCommand()) return;
 
-	if (interaction.commandName === 'ping') {
+  if (interaction.commandName === 'ping') {
     await testCommand(interaction);
-	} else if (interaction.commandName === 'update') {
+  } else if (interaction.commandName === 'update') {
     await updateCommand(interaction);
-	} else if (interaction.commandName === 'subscribe') {
+  } else if (interaction.commandName === 'subscribe') {
     await subscribeCommand(interaction);
   }
 });
@@ -83,9 +84,8 @@ async function subscribeCommand(interaction) {
   const guildid = interaction.guildId;
   const channelid = interaction.guildId;
   const feed = interaction.options.getString('feed');
-  
-  const target = 'localhost:50051';
-  var client = new canvasrss_proto.CanvasRss(target, grpc.credentials.createInsecure());
+
+  var client = new canvasrss_proto.CanvasRss(TARGET, grpc.credentials.createInsecure());
 
   let subscribeRequest = {
     guildId: guildid,
@@ -94,9 +94,9 @@ async function subscribeCommand(interaction) {
   }
   client.subscribe(subscribeRequest, function(err, response) {
     if (response.success === true) {
-      interaction.reply("Subscrition added");
+      interaction.reply(response.message);
     } else {
-      interaction.reply({ content: 'somthing went wrong', ephemeral: true });
+      interaction.reply({ content: response.message, ephemeral: true });
     }
   });
 }
@@ -105,8 +105,7 @@ async function subscribeCommand(interaction) {
 * @param {Interaction} interaction
 */
 async function updateCommand(interaction) {
-  const target = 'localhost:50051';
-  var client = new canvasrss_proto.CanvasRss(target, grpc.credentials.createInsecure());
+  var client = new canvasrss_proto.CanvasRss(TARGET, grpc.credentials.createInsecure());
 
   let date = new Date(2022, 0, 1);
   let timestamp = Math.floor(date.getTime() / 1000);
@@ -117,7 +116,7 @@ async function updateCommand(interaction) {
     for (let key in feed.announcements) {
       const announcement = feed.announcements[key];
       const embed = buildAnnouncementEmbed(announcement);
-      interaction.channel.send({embeds: [embed]});
+      interaction.channel.send({ embeds: [embed] });
     }
   });
 
@@ -131,8 +130,7 @@ async function updateCommand(interaction) {
 * @param {Interaction} interaction
 */
 async function testCommand(interaction) {
-  const target = 'localhost:50051';
-  var client = new canvasrss_proto.CanvasRss(target, grpc.credentials.createInsecure());
+  var client = new canvasrss_proto.CanvasRss(Target, grpc.credentials.createInsecure());
 
   let date = new Date(2022, 0, 1);
   let timestamp = Math.floor(date.getTime() / 1000);
@@ -150,7 +148,7 @@ async function testCommand(interaction) {
       const announcement = feed.announcements[key];
       const embed = buildAnnouncementEmbed(announcement);
       console.log(embed);
-      interaction.channel.send({embeds: [embed]});
+      interaction.channel.send({ embeds: [embed] });
     }
   });
 
@@ -188,12 +186,11 @@ function buildAnnouncementEmbed(announcement) {
 
 
 function main() {
-  const target = 'localhost:50051';
-  let client = new canvasrss_proto.CanvasRss(target, grpc.credentials.createInsecure());
-                                       
+  let client = new canvasrss_proto.CanvasRss(TARGET, grpc.credentials.createInsecure());
+
   var user = 'world';
-  
-  client.sayHello({name: user}, function(err, response) {
+
+  client.sayHello({ name: user }, function(err, response) {
     console.log('Greeting:', response.message);
   });
 

@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use crate::diesel::ExpressionMethods;
 use crate::error::{DbError, MyError};
 use crate::schema::feeds::dsl::feeds as db_feeds;
+
 use crate::schema::{backup_feeds, feeds, subscriptions};
 use crate::Pool;
 
@@ -81,12 +82,13 @@ impl DbFeed {
 }
 
 impl Subscription {
+    /// Add Feed to the db and returns its title
     pub async fn add(
         server_id: &str,
         channel_id: &str,
         url: &str,
         pool: &Pool,
-    ) -> Result<(), MyError> {
+    ) -> Result<String, MyError> {
         // TODO: Ged rid of this FeedError
         // Get feed canvas_id
         let feed = Feed::from_url(url).await?;
@@ -97,6 +99,7 @@ impl Subscription {
             .filter(feeds::canvas_id.eq(&feed.id))
             .select(feeds::id)
             .get_result(&conn);
+
         let feed_id = if let Ok(id) = tmp {
             id
         } else if Err(diesel::result::Error::NotFound) == tmp {
@@ -117,10 +120,19 @@ impl Subscription {
             feed_id,
         };
 
-        let _ret: usize = diesel::insert_into(subscriptions::table)
+        // Insert subscription
+        let _row_inserted = match diesel::insert_into(subscriptions::table)
             .values(&new_subscription)
-            .execute(&conn)?;
+            .execute(&conn)
+        {
+            Ok(n) => n,
+            Err(diesel::result::Error::DatabaseError(
+                diesel::result::DatabaseErrorKind::UniqueViolation,
+                _,
+            )) => return Err(DbError::UniqueViolation.into()),
+            e => e?,
+        };
 
-        Ok(())
+        Ok(feed.title)
     }
 }

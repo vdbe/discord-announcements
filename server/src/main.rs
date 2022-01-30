@@ -1,16 +1,18 @@
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
-use discord_announcements::{Feed, Pool, Subscription};
+use discord_announcements::{DbError, Feed, Pool, Subscription};
 use dotenv::dotenv;
+use std::time::SystemTime;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use tonic::{transport::Server, Request, Response, Status};
+
+use discord_announcements::{FeedError, MyError};
 use proto_canvas_rss::canvas_rss_server::{CanvasRss, CanvasRssServer};
 use proto_canvas_rss::{
     AnnouncementReply, FeedReply, HelloReply, HelloRequest, ListFeedsRequest,
     NewAnnouncementsRequest, SubscribeRequest, SubscribeResponse,
 };
-use std::time::SystemTime;
-use tokio::sync::mpsc;
-use tokio_stream::wrappers::ReceiverStream;
-use tonic::{transport::Server, Request, Response, Status};
 
 pub mod proto_canvas_rss {
     tonic::include_proto!("canvasrss");
@@ -42,7 +44,7 @@ impl CanvasRss for CanvasRssService {
             return Err(tonic::Status::new(
                 tonic::Code::Internal,
                 "Failed to retreive feeds",
-            ))
+            ));
         };
 
         let (tx, rx) = mpsc::channel(4);
@@ -95,7 +97,7 @@ impl CanvasRss for CanvasRssService {
             return Err(tonic::Status::new(
                 tonic::Code::Internal,
                 "Failed to retreive feeds",
-            ))
+            ));
         };
 
         let (tx, rx) = mpsc::channel(4);
@@ -149,20 +151,35 @@ impl CanvasRss for CanvasRssService {
     ) -> Result<tonic::Response<SubscribeResponse>, tonic::Status> {
         let subscribe_request = request.into_inner();
 
-        // Check if feed url is valid
-        //if Feed::from_url(subscribe_request.feed).await.is_err() {
-        //    return Ok(Response::new(SubscribeResponse { success: false }));
-        //}
-        let subscribe_response = match Subscription::add(
-            &subscribe_request.guild_id,
-            &subscribe_request.channel_id,
-            &subscribe_request.feed,
-            &self.pool,
-        )
-        .await
-        {
-            Ok(_) => SubscribeResponse { success: true },
-            Err(_) => SubscribeResponse { success: false },
+        let subscribe_response = match dbg!(
+            Subscription::add(
+                &subscribe_request.guild_id,
+                &subscribe_request.channel_id,
+                &subscribe_request.feed,
+                &self.pool,
+            )
+            .await
+        ) {
+            Ok(title) => SubscribeResponse {
+                success: true,
+                message: format!("Placed a subscription for \'{title}\'"),
+            },
+            Err(MyError::Feed(FeedError::InvalidFeedUrl(_))) => SubscribeResponse {
+                success: false,
+                message: String::from("Looks like you passed an invalid feed url"),
+            },
+            Err(MyError::Feed(FeedError::De(_))) => SubscribeResponse {
+                success: false,
+                message: String::from("Failed to read the url as a announcement feed"),
+            },
+            Err(MyError::Db(DbError::UniqueViolation)) => SubscribeResponse {
+                success: false,
+                message: String::from("This channel is already subscribed to that feed"),
+            },
+            Err(_) => SubscribeResponse {
+                success: false,
+                message: String::from("Oops something went wrong"),
+            },
         };
 
         Ok(Response::new(subscribe_response))
@@ -178,10 +195,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool: Pool = r2d2::Pool::builder().build(manager).unwrap();
 
     let addr = "[::1]:50051".parse()?;
-    let greeter = CanvasRssService { pool };
+    let canvas_rss = CanvasRssService { pool };
 
     Server::builder()
-        .add_service(CanvasRssServer::new(greeter))
+        .add_service(CanvasRssServer::new(canvas_rss))
         .serve(addr)
         .await?;
 

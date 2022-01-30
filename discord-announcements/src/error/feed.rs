@@ -1,8 +1,6 @@
 use std::error::Error;
 use std::fmt;
 
-use super::quick_impl;
-
 /// Errors that come from receiving/parsing the Feed
 #[derive(Debug)]
 pub enum FeedError {
@@ -11,6 +9,9 @@ pub enum FeedError {
 
     /// Web error: 404 403 and other reqwest errors
     Web(String),
+
+    /// Invalid feed
+    InvalidFeedUrl(String),
 
     /// Just a generic error without dedicated variant,
     /// with a string to store a description
@@ -30,9 +31,10 @@ impl fmt::Display for FeedError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::De(s) => write!(f, "Feed deserialization error: {s}"),
-            Self::Web(s) => write!(f, "Feed weberror: {s}"),
+            Self::Web(s) => write!(f, "Feed web error: {s}"),
+            Self::InvalidFeedUrl(s) => write!(f, "Feed invalid url: {s}"),
             Self::Generic(s) => write!(f, "Feed error: {s}"),
-            Self::Empty => write!(f, "FeedError"),
+            Self::Empty => write!(f, "Feed error"),
         }
     }
 }
@@ -42,6 +44,7 @@ impl Error for FeedError {
         match self {
             Self::De(s) => s,
             Self::Web(s) => s,
+            Self::InvalidFeedUrl(s) => s,
             Self::Generic(s) => s,
             Self::Empty => "",
         }
@@ -90,4 +93,26 @@ impl From<quick_xml::DeError> for FeedError {
     }
 }
 
-quick_impl!(From<reqwest::Error> for FeedError);
+impl From<reqwest::Error> for FeedError {
+    fn from(e: reqwest::Error) -> Self {
+        if e.is_body() {
+            Self::Web(e.to_string())
+        } else if e.is_builder() {
+            Self::InvalidFeedUrl(e.to_string())
+        } else if e.is_connect() {
+            Self::Web(e.to_string())
+        } else if e.is_decode() {
+            Self::Web(e.to_string())
+        } else if e.is_redirect() {
+            Self::InvalidFeedUrl(e.to_string())
+        } else if e.is_status() {
+            Self::InvalidFeedUrl(e.to_string())
+        } else if e.is_request() {
+            Self::InvalidFeedUrl(e.to_string())
+        } else if e.is_timeout() {
+            Self::Web(e.to_string())
+        } else {
+            Self::Web(e.to_string())
+        }
+    }
+}

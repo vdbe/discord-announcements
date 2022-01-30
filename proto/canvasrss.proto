@@ -72,7 +72,11 @@ message SubscribeRequest {
 }
 
 message SubscribeResponse {
+    // Is the subscription placed
     bool success = 1;
+
+    // Message for the user
+    string message = 2;
 }
 
 // vim: ft=proto ts=4 sw=4 et :
