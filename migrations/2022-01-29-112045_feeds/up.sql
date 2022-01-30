@@ -1,0 +1,8 @@
+-- Your SQL goes here
+CREATE TABLE feeds (
+	id		SERIAL PRIMARY KEY,
+	canvas_id	VARCHAR UNIQUE NOT NULL,
+	url		VARCHAR UNIQUE NOT NULL,
+	last_update	TIMESTAMP NOT NULL
+);
+

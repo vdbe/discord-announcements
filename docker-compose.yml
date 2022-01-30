@@ -1,0 +1,22 @@
+# Use postgres/example user/password credentials
+version: '3.1'
+
+services:
+
+  db:
+    image: postgres
+    container_name: '${COMPOSE_PROJECT_NAME}-databse'
+    restart: 'on-failure'
+    environment:
+      POSTGRES_PASSWORD: '${DATABASE_PASSWORD}'
+    ports:
+      - 5432:5432
+    volumes:
+      - /var/lib/postgresql/data
+
+  adminer:
+    image: adminer
+    container_name: '${COMPOSE_PROJECT_NAME}-adminer'
+    restart: 'on-failure'
+    ports:
+      - 8080:8080

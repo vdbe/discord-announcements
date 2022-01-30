@@ -1,0 +1,16 @@
+{
+  "scripts": {
+    "serve": "nodemon"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.15"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^0.3.0",
+    "@grpc/grpc-js": "^1.5.3",
+    "@grpc/proto-loader": "^0.6.9",
+    "discord.js": "^13.6.0",
+    "dotenv": "^14.3.2",
+    "turndown": "^7.1.1"
+  }
+}

@@ -1,0 +1,78 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package canvasrss;
+
+
+service CanvasRss {
+    // A server-to-client streaming RPC.
+    //
+    // Obtains the Feeds available.  Results are streamed rather than returned
+    // at once (e.g. in a response message with a repeated field), as their
+    // maybe a large number of feeds.
+    rpc ListFeeds(ListFeedsRequest) returns (stream FeedReply) {}
+
+    rpc NewAnnouncements(NewAnnouncementsRequest) returns (stream FeedReply) {}
+
+    // Our SayHello rpc accepts HelloRequests and returns HelloReplies
+    rpc SayHello (HelloRequest) returns (HelloReply);
+
+    rpc Subscribe (SubscribeRequest) returns (SubscribeResponse);
+}
+message HelloRequest {
+    // Request message contains the name to be greeted
+    string name = 1;
+}
+
+message HelloReply {
+    // Reply contains the greeting message
+    string message = 1;
+}
+
+message ListFeedsRequest {
+    google.protobuf.Timestamp after = 1;
+}
+
+message NewAnnouncementsRequest {}
+
+message FeedReply {
+    // Url of course announcements on canvas
+    string id = 1;
+
+    // announcements
+    repeated AnnouncementReply announcements = 2;
+}
+
+message AnnouncementReply {
+    // Tile of announcement
+    string title = 1;
+
+    // When the announcement was placed
+    google.protobuf.Timestamp published = 2;
+
+    // Link to the the announcements
+    string link = 3;
+
+    // Person that made the announcements
+    string author = 4;
+
+    /// Content
+    string content = 5;
+}
+
+message SubscribeRequest {
+    // url to the feed
+    string feed = 1;
+
+    // id of the guild
+    string guildId = 2;
+
+    // id of the channel
+    string channelId = 3;
+}
+
+message SubscribeResponse {
+    bool success = 1;
+}
+
+// vim: ft=proto ts=4 sw=4 et :

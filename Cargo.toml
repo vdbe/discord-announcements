@@ -1,0 +1,11 @@
+[workspace]
+
+members = [
+    "discord-announcements",
+    "server",
+    "client",
+]
+
+[workspace.metadata.bot]
+root = "bot"
+#tool = ["yarn", "run", "build"]

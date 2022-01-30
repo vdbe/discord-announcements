@@ -1,0 +1,22 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio-stream = "0.1.8"
+tokio-postgres = "0.7.2"
+diesel = { version = "1.4.8", features = ["postgres", "r2d2", "time"] }
+r2d2 = "0.8.9"
+dotenv = "0.15.0"
+tonic = "0.6"
+prost = "0.9"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+prost-types = "0.9"
+time = { version = "0.3.7", features = ["serde-well-known"] }
+discord-announcements = { path = "../discord-announcements"}
+
+[build-dependencies]
+tonic-build = "0.6"
