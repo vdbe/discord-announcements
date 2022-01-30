@@ -4,6 +4,7 @@ use std::time::SystemTime;
 use crate::diesel::ExpressionMethods;
 use crate::error::{DbError, MyError};
 use crate::schema::feeds::dsl::feeds as db_feeds;
+use crate::schema::subscriptions::dsl::subscriptions as db_subscriptions;
 
 use crate::schema::{backup_feeds, feeds, subscriptions};
 use crate::Pool;
@@ -49,7 +50,7 @@ pub struct NewSubsription<'a> {
 }
 
 #[derive(Debug, Queryable)]
-pub struct Subscription {
+pub struct DbSubscription {
     pub id: i32,
     pub server_id: String,
     pub channel_id: String,
@@ -81,7 +82,7 @@ impl DbFeed {
     }
 }
 
-impl Subscription {
+impl DbSubscription {
     /// Add Feed to the db and returns its title
     pub async fn add(
         server_id: &str,
@@ -134,5 +135,18 @@ impl Subscription {
         };
 
         Ok(feed.title)
+    }
+
+    pub fn get_by_feed_id(feed_id: i32, pool: &Pool) -> Result<Option<Vec<Self>>, DbError> {
+        let conn = pool.get()?;
+
+        match db_subscriptions
+            .filter(subscriptions::feed_id.eq(feed_id))
+            .get_results(&conn)
+        {
+            Ok(v) => Ok(Some(v)),
+            Err(diesel::result::Error::NotFound) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 }

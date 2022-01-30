@@ -1,6 +1,6 @@
 use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
-use discord_announcements::{DbError, Feed, Pool, Subscription};
+use discord_announcements::{DbError, DbSubscription, Feed, Pool};
 use dotenv::dotenv;
 use std::time::SystemTime;
 use tokio::sync::mpsc;
@@ -11,7 +11,7 @@ use discord_announcements::{FeedError, MyError};
 use proto_canvas_rss::canvas_rss_server::{CanvasRss, CanvasRssServer};
 use proto_canvas_rss::{
     AnnouncementReply, FeedReply, HelloReply, HelloRequest, ListFeedsRequest,
-    NewAnnouncementsRequest, SubscribeRequest, SubscribeResponse,
+    NewAnnouncementsRequest, SubscribeRequest, SubscribeResponse, Subscriber,
 };
 
 pub mod proto_canvas_rss {
@@ -77,6 +77,7 @@ impl CanvasRss for CanvasRssService {
                     let feed_reply = FeedReply {
                         id: feed.id,
                         announcements,
+                        subscribers: Vec::new(),
                     };
 
                     tx.send(Ok(feed_reply.clone())).await.unwrap();
@@ -104,7 +105,7 @@ impl CanvasRss for CanvasRssService {
 
         if let Some(feeds) = feeds {
             tokio::spawn(async move {
-                for feed in feeds {
+                for (feed, subscribers) in feeds {
                     let mut announcements: Vec<AnnouncementReply> = Vec::new();
 
                     for announcement in feed.announcements {
@@ -117,9 +118,18 @@ impl CanvasRss for CanvasRssService {
                         });
                     }
 
+                    let subscribers = subscribers
+                        .iter()
+                        .map(|s| Subscriber {
+                            server_id: s.0.clone(),
+                            channel_id: s.1.clone(),
+                        })
+                        .collect();
+
                     let feed_reply = FeedReply {
                         id: feed.id,
                         announcements,
+                        subscribers,
                     };
 
                     tx.send(Ok(feed_reply.clone())).await.unwrap();
@@ -150,16 +160,22 @@ impl CanvasRss for CanvasRssService {
         request: tonic::Request<SubscribeRequest>,
     ) -> Result<tonic::Response<SubscribeResponse>, tonic::Status> {
         let subscribe_request = request.into_inner();
+        let subscriber = match subscribe_request.subscriber {
+            Some(x) => x,
+            None => Err(tonic::Status::new(
+                tonic::Code::InvalidArgument,
+                "No subscriber provided",
+            ))?,
+        };
 
-        let subscribe_response = match dbg!(
-            Subscription::add(
-                &subscribe_request.guild_id,
-                &subscribe_request.channel_id,
-                &subscribe_request.feed,
-                &self.pool,
-            )
-            .await
-        ) {
+        let subscribe_response = match DbSubscription::add(
+            &subscriber.server_id,
+            &subscriber.channel_id,
+            &subscribe_request.feed,
+            &self.pool,
+        )
+        .await
+        {
             Ok(title) => SubscribeResponse {
                 success: true,
                 message: format!("Placed a subscription for \'{title}\'"),

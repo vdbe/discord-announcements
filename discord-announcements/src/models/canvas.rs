@@ -3,11 +3,11 @@ use reqwest::IntoUrl;
 use serde::Deserialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::diesel::ExpressionMethods;
 use crate::error::MyError;
 use crate::schema::feeds as schema_feeds;
 use crate::schema::feeds::dsl::feeds as db_feeds;
 use crate::Pool;
+use crate::{diesel::ExpressionMethods, DbSubscription};
 
 use super::{DbFeed, NewFeed};
 
@@ -209,7 +209,9 @@ impl Feed {
     }
 
     /// Retrieve feeds containing only announcements placed after the last time this function was called
-    pub async fn get_new(pool: &Pool) -> Result<Option<Vec<Self>>, MyError> {
+    pub async fn get_new(
+        pool: &Pool,
+    ) -> Result<Option<Vec<(Self, Vec<(String, String)>)>>, MyError> {
         let vec_db_feeds = match DbFeed::get_all(pool) {
             Ok(Some(vec)) => vec,
             Ok(None) => return Ok(None),
@@ -226,20 +228,30 @@ impl Feed {
         let conn = pool.get()?;
 
         // collect tasks
-        let mut vec_feeds: Vec<Feed> = Vec::new();
+        let mut ret: Vec<(Feed, Vec<(String, String)>)> = Vec::new();
         for (i, task) in tasks.into_iter().enumerate() {
             let mut feed = task.await??;
 
-            // Update the `last_update` table field of feeds if there is a announcement
+            // Only keep announcement published after the last_update
             if let Some(last) = feed.after(vec_db_feeds[i].last_update) {
+                // Update the `last_update` table field of the feed
                 diesel::update(db_feeds.filter(schema_feeds::canvas_id.eq(&feed.id)))
                     .set(schema_feeds::last_update.eq(last))
                     .execute(&conn)?;
-            };
 
-            vec_feeds.push(feed);
+                let subs =
+                    if let Some(v) = DbSubscription::get_by_feed_id(vec_db_feeds[i].id, pool)? {
+                        v.iter()
+                            .map(|s| (s.server_id.clone(), s.channel_id.clone()))
+                            .collect()
+                    } else {
+                        Vec::new()
+                    };
+
+                ret.push((feed, subs));
+            };
         }
 
-        Ok(Some(vec_feeds))
+        Ok(Some(ret))
     }
 }

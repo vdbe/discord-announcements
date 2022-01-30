@@ -58,13 +58,13 @@ const rest = new REST({ version: '9' }).setToken(TOKEN);
 })();
 
 const { Client, Intents, Interaction, MessageEmbed } = require('discord.js');
-var client = new Client({ intents: [Intents.FLAGS.GUILDS] });
+var bot = new Client({ intents: [Intents.FLAGS.GUILDS] });
 
-client.on('ready', () => {
-  console.log(`Logged in as ${client.user.tag}!`);
+bot.on('ready', () => {
+  console.log(`Logged in as ${bot.user.tag}!`);
 });
 
-client.on('interactionCreate', async (interaction) => {
+bot.on('interactionCreate', async (interaction) => {
   if (!interaction.isCommand()) return;
 
   if (interaction.commandName === 'ping') {
@@ -80,17 +80,20 @@ client.on('interactionCreate', async (interaction) => {
 * @param {Interaction} interaction
 */
 async function subscribeCommand(interaction) {
-  console.log(interaction);
   const guildid = interaction.guildId;
-  const channelid = interaction.guildId;
+  const channelid = interaction.channelId;
   const feed = interaction.options.getString('feed');
 
   var client = new canvasrss_proto.CanvasRss(TARGET, grpc.credentials.createInsecure());
 
-  let subscribeRequest = {
-    guildId: guildid,
+  let subscriber = {
+    serverId: guildid,
     channelId: channelid,
+  }
+
+  let subscribeRequest = {
     feed: feed,
+    subscriber: subscriber,
   }
   client.subscribe(subscribeRequest, function(err, response) {
     if (response.success === true) {
@@ -112,11 +115,26 @@ async function updateCommand(interaction) {
 
   let newAnnouncementsRequest = {}
   let call = client.newAnnouncements(newAnnouncementsRequest);
-  call.on('data', function(feed) {
+  call.on('data', async function(feed) {
+    let channels = [];
+    for (let key in feed.subscribers) {
+      const subscriber = feed.subscribers[key];
+      const serverId = subscriber.serverId;
+      const channelId = subscriber.channelId
+      
+      const channel = await bot.channels.fetch(channelId);
+
+      channels.push(channel);
+    }
+
     for (let key in feed.announcements) {
       const announcement = feed.announcements[key];
       const embed = buildAnnouncementEmbed(announcement);
-      interaction.channel.send({ embeds: [embed] });
+
+      for (let key in channels) {
+        const channel = channels[key]
+        channel.send({ embeds: [embed] });
+      }
     }
   });
 
@@ -234,4 +252,4 @@ function main() {
 
 }
 //main();
-client.login(TOKEN);
+bot.login(TOKEN);

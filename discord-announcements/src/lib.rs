@@ -5,7 +5,7 @@ use diesel::prelude::*;
 use diesel::r2d2::{self, ConnectionManager};
 
 pub use error::{DbError, FeedError, MyError};
-pub use models::{Feed, Subscription};
+pub use models::{DbSubscription, Feed};
 
 mod error;
 mod models;

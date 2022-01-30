@@ -41,6 +41,17 @@ message FeedReply {
 
     // announcements
     repeated AnnouncementReply announcements = 2;
+
+    // Subscribers
+    repeated Subscriber subscribers = 3;
+}
+
+message Subscriber {
+    // server id
+    string serverId = 1;
+
+    // channel id
+    string channelId = 2;
 }
 
 message AnnouncementReply {
@@ -64,11 +75,8 @@ message SubscribeRequest {
     // url to the feed
     string feed = 1;
 
-    // id of the guild
-    string guildId = 2;
-
-    // id of the channel
-    string channelId = 3;
+    // subscriber
+    Subscriber subscriber = 2;
 }
 
 message SubscribeResponse {

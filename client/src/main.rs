@@ -1,5 +1,7 @@
 use proto_canvas_rss::canvas_rss_client::CanvasRssClient;
-use proto_canvas_rss::{HelloRequest, ListFeedsRequest, NewAnnouncementsRequest, SubscribeRequest};
+use proto_canvas_rss::{
+    HelloRequest, ListFeedsRequest, NewAnnouncementsRequest, SubscribeRequest, Subscriber,
+};
 use std::error::Error;
 use std::time::SystemTime;
 use time::format_description::well_known::Rfc3339;
@@ -47,7 +49,7 @@ async fn get_new_announcements(
 
     let mut announcement_count = 0;
     while let Some(feed) = stream.message().await? {
-        announcement_count += feed.announcements.len()
+        announcement_count += feed.announcements.len();
     }
 
     println!("{announcement_count} new announcements in {elapsed:.2?}");
@@ -62,10 +64,13 @@ async fn subscribe(
     feed: String,
     client: &mut CanvasRssClient<Channel>,
 ) -> Result<(), Box<dyn Error>> {
+    let subscriber = Subscriber {
+        server_id: guild_id,
+        channel_id: channel_id,
+    };
     let subscribe_request = SubscribeRequest {
         feed,
-        guild_id,
-        channel_id,
+        subscriber: Some(subscriber),
     };
 
     let response = client
@@ -99,7 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = CanvasRssClient::connect("http://[::1]:50051").await?;
 
     //get_feeds(&mut client).await?;
-    //get_new_announcements(&mut client).await?;
+    get_new_announcements(&mut client).await?;
     //subscribe(&mut client).await?;
     //hello(&mut client).await?;
 
