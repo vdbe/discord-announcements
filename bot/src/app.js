@@ -110,9 +110,6 @@ async function subscribeCommand(interaction) {
 async function updateCommand(interaction) {
   var client = new canvasrss_proto.CanvasRss(TARGET, grpc.credentials.createInsecure());
 
-  let date = new Date(2022, 0, 1);
-  let timestamp = Math.floor(date.getTime() / 1000);
-
   let newAnnouncementsRequest = {}
   let call = client.newAnnouncements(newAnnouncementsRequest);
   call.on('data', async function(feed) {

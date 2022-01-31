@@ -1,6 +1,7 @@
 {
   "scripts": {
-    "serve": "nodemon"
+    "serve": "nodemon",
+    "oneshot": "node src/oneshot-update.js"
   },
   "devDependencies": {
     "nodemon": "^2.0.15"
